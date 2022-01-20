@@ -36,7 +36,6 @@ char password[] = "wifijelszo";
 int keyIndex = 0;
 
 WiFiServer server(80);
-const int blueLED= 37;
 
 void setup() {
   Serial.begin(115200);      // initialize serial communication
@@ -46,7 +45,7 @@ void setup() {
   // attempt to connect to Wifi network:
   Serial.print("Attempting to connect to Network named: ");
   // print the network name (SSID);
-  Serial.println(ssid); 
+  Serial.println(ssid);
   // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
   WiFi.begin(ssid, password);
   while ( WiFi.status() != WL_CONNECTED) {
@@ -54,10 +53,10 @@ void setup() {
     Serial.print(".");
     delay(300);
   }
-  
+
   Serial.println("\nYou're connected to the network");
   Serial.println("Waiting for an ip address");
-  
+
   while (WiFi.localIP() == INADDR_NONE) {
     // print dots while we wait for an ip addresss
     Serial.print(".");
@@ -65,8 +64,8 @@ void setup() {
   }
 
   Serial.println("\nIP Address obtained");
-  
-  // you're connected now, so print out the status  
+
+  // you're connected now, so print out the status
   printWifiStatus();
 
   Serial.println("Starting webserver on port 80");
@@ -75,7 +74,7 @@ void setup() {
 }
 
 void loop() {
-  int i = 0;
+  int i1 = 0;
   WiFiClient client = server.available();   // listen for incoming clients
 
   if (client) {                             // if you get a client,
@@ -97,10 +96,10 @@ void loop() {
             client.println();
 
             // the content of the HTTP response follows the header:
-            client.println("<html><head><title>Energia CC3200 WiFi Web Server</title></head><body align=center>");
-            client.println("<h1 align=center><font color=\"red\">Welcome to the CC3200 WiFi Web Server</font></h1>");
-            client.print("RED LED <button onclick=\"location.href='/H'\">HIGH</button>");
-            client.println(" <button onclick=\"location.href='/L'\">LOW</button><br>");
+            client.println("<html><head><title>Supersecure WiFi Web Server</title></head><body align=center>");
+            client.println("<h1 align=center><font color=\"red\">Welcome to the supersecure car monitor</font></h1>");
+            client.print("RED LED <button onclick=\"location.href='/H'\">Chill it is me</button>");
+            client.println(" <button onclick=\"location.href='/L'\">ALARM the police</button><br>");
 
             // The HTTP response ends with another blank line:
             client.println();
@@ -109,7 +108,7 @@ void loop() {
           }
           else {      // if you got a newline, then clear the buffer:
             memset(buffer, 0, 150);
-            i = 0;
+            i1 = 0;
           }
         }
         else if (c != '\r') {    // if you got anything else but a carriage return character,
@@ -118,12 +117,12 @@ void loop() {
 
         // Check to see if the client request was "GET /H" or "GET /L":
         if (endsWith(buffer, "GET /H")) {
-          digitalWrite(RED_LED, HIGH);              // GET /H turns the LED on
-          digitalWrite(blueLED,HIGH);
+          movmentFlag = 0;
+          digitalWrite(blueLED, HIGH); //drive mode
+          digitalWrite(redLED, LOW);
         }
         if (endsWith(buffer, "GET /L")) {
-          digitalWrite(RED_LED, LOW);                // GET /L turns the LED off
-          digitalWrite(blueLED, LOW);
+          alarm();
         }
       }
     }
@@ -139,7 +138,7 @@ void loop() {
 boolean endsWith(char* inString, const char* compString) {
   int compLength = strlen(compString);
   int strLength = strlen(inString);
-  
+
   //compare the last "compLength" values of the inString
   int i;
   for (i = 0; i < compLength; i++) {

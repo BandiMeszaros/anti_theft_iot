@@ -296,11 +296,70 @@ void loop() {
     }
     if(movmentFlag)
     {
+      int i1 = 0;
+      WiFiClient client = server.available();   // listen for incoming clients
+
+      if (client) {                             // if you get a client,
+        Serial.println("new client");           // print a message out the serial port
+        char buffer[150] = {0};                 // make a buffer to hold incoming data
+        while (client.connected()) {            // loop while the client's connected
+          if (client.available()) {             // if there's bytes to read from the client,
+            char c = client.read();             // read a byte, then
+            Serial.write(c);                    // print it out the serial monitor
+            if (c == '\n') {                    // if the byte is a newline character
+
+              // if the current line is blank, you got two newline characters in a row.
+              // that's the end of the client HTTP request, so send a response:
+              if (strlen(buffer) == 0) {
+                // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
+                // and a content-type so the client knows what's coming, then a blank line:
+                client.println("HTTP/1.1 200 OK");
+                client.println("Content-type:text/html");
+                client.println();
+
+                // the content of the HTTP response follows the header:
+                client.println("<html><head><title>Supersecure WiFi Web Server</title></head><body align=center>");
+                client.println("<h1 align=center><font color=\"red\">Welcome to the supersecure car monitor</font></h1>");
+                client.print("RED LED <button onclick=\"location.href='/H'\">Chill it is me</button>");
+                client.println(" <button onclick=\"location.href='/L'\">ALARM the police</button><br>");
+
+                // The HTTP response ends with another blank line:
+                client.println();
+                // break out of the while loop:
+                break;
+              }
+              else {      // if you got a newline, then clear the buffer:
+                memset(buffer, 0, 150);
+                i1 = 0;
+              }
+            }
+            else if (c != '\r') {    // if you got anything else but a carriage return character,
+              buffer[i1++] = c;      // add it to the end of the currentLine
+            }
+
+            // Check to see if the client request was "GET /H" or "GET /L":
+            if (endsWith(buffer, "GET /H")) {
+              movmentFlag = 0;
+              digitalWrite(blueLED, HIGH); //drive mode
+              digitalWrite(redLED, LOW);
+            }
+            if (endsWith(buffer, "GET /L")) {
+              alarm();
+            }
+          }
+        }
+        // close the connection:
+        client.stop();
+        Serial.println("client disonnected");
+      }
+
+
+      /* manual disalarm
       int timer = 0;
       int button2 = 0;
       int button3 = 0;
       for(timer; timer<2000; timer++)
-      {//5000 loops until it alarms the police
+      {//2000 loops until it alarms the police
         button2 = digitalRead(pushbuttonBooster1);
         button3 = digitalRead(pushbuttonBooster2);
         Serial.print("\nTimer value:  ");
@@ -319,12 +378,8 @@ void loop() {
           movmentFlag = 0;
           digitalWrite(blueLED, HIGH); //drive mode
           digitalWrite(redLED, LOW);
-          break;
+          break;*/
         }
-      }
-      alarm();
-    }
-
     if (DEBUGMODE == true)
     //this code only runs if the DEBUGMODE constanst is true
     {
@@ -352,4 +407,20 @@ void printWifiStatus() {
   // print where to go in a browser:
   Serial.print("To see this page in action, open a browser to http://");
   Serial.println(ip);
+}
+
+boolean endsWith(char* inString, const char* compString) {
+  int compLength = strlen(compString);
+  int strLength = strlen(inString);
+
+  //compare the last "compLength" values of the inString
+  int i;
+  for (i = 0; i < compLength; i++) {
+    char a = inString[(strLength - 1) - i];
+    char b = compString[(compLength - 1) - i];
+    if (a != b) {
+      return false;
+    }
+  }
+  return true;
 }
