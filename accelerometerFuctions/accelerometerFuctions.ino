@@ -16,7 +16,7 @@
 
 */
 
-#define DEBUGMODE 0
+#define DEBUGMODE 1
 
 const int value_threshold = 700;
 const int xpin = 23; // x-axis of the accelerometer
