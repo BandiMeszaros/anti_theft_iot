@@ -34,6 +34,23 @@ static int movmentFlag = 0;
 const int pushbuttonBooster1 = 32;
 const int pushbuttonBooster2 = 33;
 
+
+#ifndef __CC3200R1M1RGC__
+// Do not include SPI for CC3200 LaunchPad
+#include <SPI.h>
+#endif
+#include <WiFi.h>
+
+// your network name also called SSID
+char ssid[] = "mywifi";
+// your network password
+char password[] = "wifijelszo";
+// your network key Index number (needed only for WEP)
+int keyIndex = 0;
+
+WiFiServer server(80);
+
+
 void alarm()
 {
   //someone is stealing your shit
@@ -205,8 +222,39 @@ void calculateRestValues()
 void setup() {
     // By default MSP432 has analogRead() set to 10 bits.
     // to 12 bit resolution for MSP432.
+
+    Serial.begin(115200);      // initialize serial communication
+
+    // attempt to connect to Wifi network:
+    Serial.print("Attempting to connect to Network named: ");
+    // print the network name (SSID);
+    Serial.println(ssid);
+    // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
+    WiFi.begin(ssid, password);
+    while ( WiFi.status() != WL_CONNECTED) {
+      // print dots while we wait to connect
+      Serial.print(".");
+      delay(300);
+    }
+
+    Serial.println("\nYou're connected to the network");
+    Serial.println("Waiting for an ip address");
+
+    while (WiFi.localIP() == INADDR_NONE) {
+      // print dots while we wait for an ip addresss
+      Serial.print(".");
+      delay(300);
+    }
+
+    Serial.println("\nIP Address obtained");
+
+    // you're connected now, so print out the status
+    printWifiStatus();
+
+    Serial.println("Starting webserver on port 80");
+    server.begin();                           // start the web server on port 80
+    Serial.println("Webserver started!");
     analogReadResolution(12);
-    Serial.begin(9600); // initialize for sending diagnostic info to computer
     pinMode(greenLED, OUTPUT);
     pinMode(redLED, OUTPUT);
     pinMode(blueLED, OUTPUT);
@@ -284,4 +332,24 @@ void loop() {
       printAccelerometerData(analogValueX, analogValueY, analogValueZ);
       printDiffData(diffX, diffY, diffZ);
     }
+}
+
+void printWifiStatus() {
+  // print the SSID of the network you're attached to:
+  Serial.print("SSID: ");
+  Serial.println(WiFi.SSID());
+
+  // print your WiFi IP address:
+  IPAddress ip = WiFi.localIP();
+  Serial.print("IP Address: ");
+  Serial.println(ip);
+
+  // print the received signal strength:
+  long rssi = WiFi.RSSI();
+  Serial.print("signal strength (RSSI):");
+  Serial.print(rssi);
+  Serial.println(" dBm");
+  // print where to go in a browser:
+  Serial.print("To see this page in action, open a browser to http://");
+  Serial.println(ip);
 }
