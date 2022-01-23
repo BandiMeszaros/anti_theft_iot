@@ -42,9 +42,9 @@ const int pushbuttonBooster2 = 33;
 #include <WiFi.h>
 
 // your network name also called SSID
-char ssid[] = "mywifi";
+char ssid[] = "HALLOGGIO";
 // your network password
-char password[] = "wifijelszo";
+char password[] = "HALLOGGIO";
 // your network key Index number (needed only for WEP)
 int keyIndex = 0;
 
