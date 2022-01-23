@@ -10,4 +10,4 @@ def index():
 
 if __name__ == '__main__':
     print("Server is up")
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True, host='94.44.112.120')
