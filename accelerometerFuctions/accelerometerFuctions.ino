@@ -338,7 +338,6 @@ void loop() {
       Serial.print(buffer);
       Serial.print("\n");
       
-     //todo: somehow we need to evaluate the recieved data use the buffer
       if (endsWith(buffer, "ALARM"))
       {
         alarm();
