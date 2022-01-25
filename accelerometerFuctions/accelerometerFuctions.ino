@@ -59,6 +59,10 @@ void disarmed()
   movmentFlag = 0;
   digitalWrite(blueLED, HIGH); //drive mode
   digitalWrite(redLED, LOW);
+  while(1)
+  {
+    Serial.print("DISARMED\n");
+  }
 }
 
 void alarm()
@@ -303,11 +307,12 @@ void loop() {
     if(movmentFlag)
     {
       httpRequest();
-      char buffer[150] = {0};
+      char buffer[200] = {0};
+      int counterBuffer = 0;
       int counterI = 0;
       while (!client.available())
       {
-        if (counterI == 100)
+        if (counterI >= 1000)
         {
           Serial.print("Can't reach server\n");
           alarm();
@@ -323,46 +328,24 @@ void loop() {
           char c = client.read();
         }
         
-        Serial.print(c);
-
-     //todo: somehow we need to evaluate the recieved data use the buffer
-      if (1)
+        //Serial.print(c);
+        if (c != '\r')
+        {
+          buffer[counterBuffer++] = c;
+        }
+      }
+      Serial.print("\n");
+      Serial.print(buffer);
+      Serial.print("\n");
+      
+      if (endsWith(buffer, "ALARM"))
       {
         alarm();
       }
-      else
+      else if(endsWith(buffer, "DISARM"))
       {
         disarmed();
-        movmentFlag = 0;
-        
       }
-      }
-      
-      /* manual disalarm
-      int timer = 0;
-      int button2 = 0;
-      int button3 = 0;
-      for(timer; timer<2000; timer++)
-      {//2000 loops until it alarms the police
-        button2 = digitalRead(pushbuttonBooster1);
-        button3 = digitalRead(pushbuttonBooster2);
-        Serial.print("\nTimer value:  ");
-        Serial.print(timer);
-        if(DEBUGMODE)
-        {
-          Serial.print("\n This is the values of the buttons, during warning phase:\n");
-          Serial.print(button2);
-          Serial.print("\n");
-          Serial.print(button3);
-          Serial.print("\n");
-        }
-        if (!button2 && !button3)
-        {
-          //disalarm
-          movmentFlag = 0;
-          digitalWrite(blueLED, HIGH); //drive mode
-          digitalWrite(redLED, LOW);
-          break;*/
         }
     if (DEBUGMODE == true)
     //this code only runs if the DEBUGMODE constanst is true
