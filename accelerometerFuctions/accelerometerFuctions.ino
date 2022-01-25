@@ -312,7 +312,7 @@ void loop() {
       int counterI = 0;
       while (!client.available())
       {
-        if (counterI >= 10000)
+        if (counterI >= 1000)
         {
           Serial.print("Can't reach server\n");
           alarm();
