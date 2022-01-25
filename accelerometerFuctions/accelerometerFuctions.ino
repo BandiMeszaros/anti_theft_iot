@@ -41,6 +41,8 @@ const int pushbuttonBooster2 = 33;
 #endif
 #include <WiFi.h>
 
+#include <string.h>
+
 // your network name also called SSID
 char ssid[] = "HALLOGGIO";
 // your network password
@@ -52,16 +54,21 @@ WiFiClient client;
 // server address:
 IPAddress server(192,168,1,193);
 
+void disarmed()
+{
+  movmentFlag = 0;
+  digitalWrite(blueLED, HIGH); //drive mode
+  digitalWrite(redLED, LOW);
+}
 
 void alarm()
 {
-  //someone is stealing your shit
+  //if the user did not disarm the board
   if(movmentFlag)
   {
     digitalWrite(redLED, LOW);
     digitalWrite(greenLED, LOW);
     digitalWrite(blueLED, LOW);
-    Serial.print("\nALARM!!!, someone is stealing your shit, call the police!!!\n");
 
     //this is just a demo, if other modules are ready it can be deleted
     while(1)
@@ -292,21 +299,45 @@ void loop() {
     if(moving)
     {
       warning_movment();
-      //todo implement the disalarm func
     }
     if(movmentFlag)
     {
       httpRequest();
-      if (!client.available())
+      char buffer[150] = {0};
+      int counterI = 0;
+      while (!client.available())
       {
+        if (counterI == 100)
+        {
+          Serial.print("Can't reach server\n");
+          alarm();
+        } 
         delay(100);
+        counterI += 1;
       }
       while (client.available())
       {
         char c = client.read();
-        Serial.write(c);
+        while (!c)
+        {
+          char c = client.read();
+        }
+        
+        Serial.print(c);
+
+     //todo: somehow we need to evaluate the recieved data use the buffer
+      if (1)
+      {
+        alarm();
       }
-      alarm();
+      else
+      {
+        disarmed();
+        movmentFlag = 0;
+        
+      }
+      }
+      
       /* manual disalarm
       int timer = 0;
       int button2 = 0;
@@ -387,7 +418,7 @@ void httpRequest() {
   if (client.connect(server, 5000)) {
     Serial.println("connecting...");
     // send the HTTP PUT request:
-    client.println("GET / HTTP/1.1");WiFiServer server(80);
+    client.println("GET /warning HTTP/1.1");
     //change the IP address here
     client.println("Host: 192.168.1.193:5000");
     client.println("User-Agent: Energia/1.1");
