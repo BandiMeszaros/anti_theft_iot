@@ -16,7 +16,7 @@
 
 */
 
-#define DEBUGMODE 1
+#define DEBUGMODE 0
 
 const int value_threshold = 700;
 const int xpin = 23; // x-axis of the accelerometer
@@ -41,25 +41,34 @@ const int pushbuttonBooster2 = 33;
 #endif
 #include <WiFi.h>
 
+#include <string.h>
+
 // your network name also called SSID
 char ssid[] = "HALLOGGIO";
 // your network password
 char password[] = "HALLOGGIO";
-// your network key Index number (needed only for WEP)
-int keyIndex = 0;
 
-WiFiServer server(80);
+// Initialize the Wifi client library
+WiFiClient client;
 
+// server address:
+IPAddress server(192,168,1,193);
+
+void disarmed()
+{
+  movmentFlag = 0;
+  digitalWrite(blueLED, HIGH); //drive mode
+  digitalWrite(redLED, LOW);
+}
 
 void alarm()
 {
-  //someone is stealing your shit
+  //if the user did not disarm the board
   if(movmentFlag)
   {
     digitalWrite(redLED, LOW);
     digitalWrite(greenLED, LOW);
     digitalWrite(blueLED, LOW);
-    Serial.print("\nALARM!!!, someone is stealing your shit, call the police!!!\n");
 
     //this is just a demo, if other modules are ready it can be deleted
     while(1)
@@ -251,9 +260,6 @@ void setup() {
     // you're connected now, so print out the status
     printWifiStatus();
 
-    Serial.println("Starting webserver on port 80");
-    server.begin();                           // start the web server on port 80
-    Serial.println("Webserver started!");
     analogReadResolution(12);
     pinMode(greenLED, OUTPUT);
     pinMode(redLED, OUTPUT);
@@ -296,64 +302,42 @@ void loop() {
     }
     if(movmentFlag)
     {
-      int i1 = 0;
-      WiFiClient client = server.available();   // listen for incoming clients
-
-      if (client) {                             // if you get a client,
-        Serial.println("new client");           // print a message out the serial port
-        char buffer[150] = {0};                 // make a buffer to hold incoming data
-        while (client.connected()) {            // loop while the client's connected
-          if (client.available()) {             // if there's bytes to read from the client,
-            char c = client.read();             // read a byte, then
-            Serial.write(c);                    // print it out the serial monitor
-            if (c == '\n') {                    // if the byte is a newline character
-
-              // if the current line is blank, you got two newline characters in a row.
-              // that's the end of the client HTTP request, so send a response:
-              if (strlen(buffer) == 0) {
-                // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-                // and a content-type so the client knows what's coming, then a blank line:
-                client.println("HTTP/1.1 200 OK");
-                client.println("Content-type:text/html");
-                client.println();
-
-                // the content of the HTTP response follows the header:
-                client.println("<html><head><title>Supersecure WiFi Web Server</title></head><body align=center>");
-                client.println("<h1 align=center><font color=\"red\">Welcome to the supersecure car monitor</font></h1>");
-                client.print("RED LED <button onclick=\"location.href='/H'\">Chill it is me</button>");
-                client.println(" <button onclick=\"location.href='/L'\">ALARM the police</button><br>");
-
-                // The HTTP response ends with another blank line:
-                client.println();
-                // break out of the while loop:
-                break;
-              }
-              else {      // if you got a newline, then clear the buffer:
-                memset(buffer, 0, 150);
-                i1 = 0;
-              }
-            }
-            else if (c != '\r') {    // if you got anything else but a carriage return character,
-              buffer[i1++] = c;      // add it to the end of the currentLine
-            }
-
-            // Check to see if the client request was "GET /H" or "GET /L":
-            if (endsWith(buffer, "GET /H")) {
-              movmentFlag = 0;
-              digitalWrite(blueLED, HIGH); //drive mode
-              digitalWrite(redLED, LOW);
-            }
-            if (endsWith(buffer, "GET /L")) {
-              alarm();
-            }
-          }
-        }
-        // close the connection:
-        client.stop();
-        Serial.println("client disonnected");
+      httpRequest();
+      char buffer[150] = {0};
+      int counterI = 0;
+      while (!client.available())
+      {
+        if (counterI == 100)
+        {
+          Serial.print("Can't reach server\n");
+          alarm();
+        } 
+        delay(100);
+        counterI += 1;
       }
+      while (client.available())
+      {
+        char c = client.read();
+        while (!c)
+        {
+          char c = client.read();
+        }
+        
+        Serial.print(c);
 
-
+     //todo: somehow we need to evaluate the recieved data use the buffer
+      if (1)
+      {
+        alarm();
+      }
+      else
+      {
+        disarmed();
+        movmentFlag = 0;
+        
+      }
+      }
+      
       /* manual disalarm
       int timer = 0;
       int button2 = 0;
@@ -423,4 +407,27 @@ boolean endsWith(char* inString, const char* compString) {
     }
   }
   return true;
+}
+
+void httpRequest() {
+  // close any connection before send a new request.
+  // This will free the socket on the WiFi shield
+  client.stop();
+
+  // if there's a successful connection:
+  if (client.connect(server, 5000)) {
+    Serial.println("connecting...");
+    // send the HTTP PUT request:
+    client.println("GET /warning HTTP/1.1");
+    //change the IP address here
+    client.println("Host: 192.168.1.193:5000");
+    client.println("User-Agent: Energia/1.1");
+    client.println("Connection: close");
+    client.println();
+
+  }
+  else {
+    // if you couldn't make a connection:
+    Serial.println("connection failed");
+  }
 }

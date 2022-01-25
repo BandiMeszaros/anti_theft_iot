@@ -68,4 +68,5 @@ def receive_warning_signal():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    print("Server is up")
+    app.run(debug=True, host='94.44.112.120')
