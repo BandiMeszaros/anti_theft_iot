@@ -6,6 +6,7 @@ import datetime
 app = Flask(__name__)
 
 userDisarm = False
+alarmTriggered = False
 
 @app.route('/')
 def welcome():
@@ -18,21 +19,24 @@ def user_alarm():
     global userDisarm
     userDisarm = False
 
+    global alarmTriggered
+    alarmTriggered = True
+
     return render_template("alarm.html")
 
 
 @app.route('/OK')
 def user_disarmed():
-    """When the disarm button was pushed on the disarm.html"""
+    """When the disarm button was pushed on the warnuser.html"""
     global userDisarm
     userDisarm = True
 
     return render_template("alarmunlocked.html")
 
-@app.route('/disarm')
+@app.route('/userwarning')
 def disarm_page():
     """this is what the user sees after a warning"""
-    return render_template("disarm.html")
+    return render_template("warnuser.html")
 
 
 @app.route('/warning', methods=['GET'])
@@ -49,19 +53,24 @@ def receive_warning_signal():
     global userDisarm
     userDisarm = False
 
-    while(seconds_passed<=3):
+    global alarmTriggered
+    alarmTriggered = False
+
+    while(seconds_passed<=60):
         #todo change time back
         alarm_time = datetime.datetime.now()
         seconds_passed = (alarm_time - trigger_time).seconds
         #if the user disarmed the alarm it breaks the loop
-        if (userDisarm):
+        if userDisarm or alarmTriggered:
+            alarmTriggered = False
             break
 
-    if (1):
-        #todo change it back to userDisarm
-        return "OK"
+    if userDisarm:
+        print(userDisarm)
+        return r'DISARM'
     else:
-        return "ALARM"
+        print(userDisarm)
+        return r'ALARM'
 
 
 

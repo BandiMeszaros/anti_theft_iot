@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Disarm your car alarm</title>
+
+</head>
+<script>
+    var host = window.location.host;
+    function alarm(){
+        var alarmwindow = "/ALARM"
+        window.open(alarmwindow)
+    }
+
+    function disarmButtonpushed()
+    {
+        var disarmWindow = "/OK"
+        window.open(disarmWindow)
+    }
+</script>
+<body>
+    <h1>Warning, we have received a warning signal</h1>
+    <p>We have received an warning signal, please select one of these options</p>
+    <button onClick="alarm()">Alarm, it wasn't me</button>
+    <button onClick="disarmButtonpushed()">Do not alarm</button>
+</body>
+</html>
