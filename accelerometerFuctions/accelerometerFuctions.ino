@@ -44,15 +44,15 @@ const int pushbuttonBooster2 = 33;
 #include <string.h>
 
 // your network name also called SSID
-char ssid[] = "HALLOGGIO";
+char ssid[] = "apt-get";
 // your network password
-char password[] = "HALLOGGIO";
+char password[] = "aspettando";
 
 // Initialize the Wifi client library
 WiFiClient client;
 
 // server address:
-IPAddress server(192,168,1,193);
+IPAddress server(192,168,43,34);
 
 void disarmed()
 {
@@ -403,7 +403,7 @@ void httpRequest() {
     // send the HTTP PUT request:
     client.println("GET /warning HTTP/1.1");
     //change the IP address here
-    client.println("Host: 192.168.1.193:5000");
+    client.println("Host: 192.168.43.34:5000");
     client.println("User-Agent: Energia/1.1");
     client.println("Connection: close");
     client.println();
