@@ -1,24 +1,4 @@
-/*
- The circuit utilizes the LEDs on the Educational BoosterPack MK II:
- * RED LED attached from digital pin 39 to ground.
- * GREEN LED attached from digital pin 38 to ground.
- * BLUE LED attached from digital pin 37 to ground.
- Analog accelerometer channels:
- * analog 25: z-axis
- * analog 24: y-axis
- * analog 23: x-axis
-
-
- Absolute rating/conversion can be determined from the ADXL3xx datasheet.
- As a quick reference, for LaunchPads with 12-bit ADC (MSP430F5529, Tiva C, etc.),
- the entire analog  range is [0,4096]. For simple tilting calculation
- [-1g,1g] ~ = [mid-800, mid + 800] = [2048-800,2048+800] = [1248,2848]
-
-*/
-
-#define DEBUGMODE 1 
-
-const int value_threshold = 700;
+const int value_threshold = 200;
 const int xpin = 23; // x-axis of the accelerometer
 const int ypin = 24; // y-axis
 const int zpin = 25; // z-axis (only on 3-axis models)
@@ -34,6 +14,9 @@ static int movmentFlag = 0;
 const int pushbuttonBooster1 = 32;
 const int pushbuttonBooster2 = 33;
 
+bool isActive = true;
+bool isMoving = false;
+
 
 #ifndef __CC3200R1M1RGC__
 // Do not include SPI for CC3200 LaunchPad
@@ -42,6 +25,28 @@ const int pushbuttonBooster2 = 33;
 #include <WiFi.h>
 
 #include <string.h>
+
+// Core library for code-sense
+#include "Energia.h"
+
+// Include application, user and local libraries
+#include "SPI.h"
+
+// Screen selection
+#define HX8353E // HX8353E K35_SPI
+
+#include "Screen_HX8353E.h"
+Screen_HX8353E myScreen;
+
+
+void activatedText(){
+  myScreen.gText(35,60,"Activated!");
+}
+
+
+void deactivatedText(){
+  myScreen.gText(30,60,"Deactivated!");
+}
 
 // your network name also called SSID
 char ssid[] = "apt-get";
@@ -54,93 +59,48 @@ WiFiClient client;
 // server address:
 IPAddress server(192,168,43,34);
 
-void disarmed()
+void disarm()
 {
   movmentFlag = 0;
-  digitalWrite(blueLED, HIGH); //drive mode
+  isActive = false;
+  isMoving = false;
+  myScreen.clear();
+  deactivatedText();
   digitalWrite(redLED, LOW);
-  while(1)
-  {
-    Serial.print("DISARMED\n");
-  }
+  digitalWrite(blueLED, HIGH);
+  digitalWrite(greenLED, LOW);
+  Serial.print("DISARMED\n");
 }
 
-void alarm()
-{
-  //if the user did not disarm the board
-  if(movmentFlag)
-  {
-    digitalWrite(redLED, LOW);
-    digitalWrite(greenLED, LOW);
-    digitalWrite(blueLED, LOW);
-
-    //this is just a demo, if other modules are ready it can be deleted
-    while(1)
-    {
-      Serial.print("ALARM!!!!!!\n");
-      digitalWrite(redLED,HIGH);
-      delay(250);
-      digitalWrite(redLED, LOW);
-      delay(250);
-    }
-  }
+void arm(){
+  isActive = true;
+  myScreen.clear();
+  activatedText();
+  digitalWrite(redLED, LOW);
+  digitalWrite(blueLED, LOW);
+  digitalWrite(greenLED, HIGH);
 }
-void warning_movment()
-{
+
+void alarm(){
+  isMoving = true;
+  digitalWrite(redLED, HIGH);
+  digitalWrite(greenLED, LOW);
+  digitalWrite(blueLED, LOW);
+  Serial.print("Aaaaaaaaaaaaalarm\n");
+}
+
+
+void warningMovement(){
   //changes the LED color green-->red
   //sends a warning message to the computer
   digitalWrite(redLED, HIGH);
   digitalWrite(greenLED, LOW);
   Serial.print("\nWARNING, WARNING, movement detected\n");
-  movmentFlag = 1;
+
+  httpRequestMovement();
+  alarm();
 }
 
-void printDiffData(int diffX, int diffY, int diffZ)
-{
-  Serial.print(" -------------\n");
-  Serial.print("Xdiff: ");
-  Serial.print(diffX);
-  Serial.print("\n");
-  Serial.print("Ydiff: "); // print to serial monitor
-  Serial.print(diffY);
-  Serial.print("\n");
-  Serial.print("Zdiff: "); // print to serial monitor
-  Serial.print(diffZ);
-  Serial.print("\n");
-}
-void printAccelerometerData(int xpinV, int ypinV, int zpinV)
-{
-
-  Serial.print(" -------------\n");
-  Serial.print("RED (X): ");
-  Serial.print(xpinV);
-  Serial.print("\n");
-  Serial.print("GREEN (Y): "); // print to serial monitor
-  Serial.print(ypinV);
-  Serial.print("\n");
-  Serial.print("BLUE (Z): "); // print to serial monitor
-  Serial.print(zpinV);
-  Serial.print("\n");
-}
-
-void printRestValues()
-{
-    Serial.print("----------");
-    Serial.print("\nx axis rest value: ");
-    Serial.print(xpin_rest);
-    Serial.print("\n");
-    Serial.print("----------");
-
-    Serial.print("\ny axis rest value: ");
-    Serial.print(ypin_rest);
-    Serial.print("\n");
-    Serial.print("----------");
-
-    Serial.print("\nz axis rest value: ");
-    Serial.print(zpin_rest);
-    Serial.print("\n");
-    Serial.print("----------");
-}
 
 void measureAnalogValues()
 {
@@ -155,14 +115,8 @@ void measureAnalogValues()
   measureResults[0] = analogValueX;
   measureResults[1] = analogValueY;
   measureResults[2] = analogValueZ;
-
-  if(DEBUGMODE)
-  {
-    Serial.print("These are the measured values:\n");
-    printAccelerometerData(analogValueX,analogValueY,analogValueZ);
-    delay(1000);
-  }
 }
+
 
 void calculateChange(int analogVX, int analogVY, int analogVZ)
 {
@@ -172,19 +126,11 @@ void calculateChange(int analogVX, int analogVY, int analogVZ)
     int yDiff = abs(analogVY-ypin_rest);
     int zDiff = abs(analogVZ-zpin_rest);
 
-    if(DEBUGMODE)
-    {
-      Serial.print("\nThese are the values after substraction:\n");
-      printDiffData(xDiff, yDiff, zDiff);
-      Serial.print("And these are the measrued values and the rest values:\n\n\n");
-      printAccelerometerData(analogVX, analogVY, analogVZ);
-      printRestValues();
-    }
-
     diffResults[0] = xDiff;
     diffResults[1] = yDiff;
     diffResults[2] = zDiff;
 }
+
 
 int movementDetected(int axisDiffs[])
 {
@@ -192,21 +138,14 @@ int movementDetected(int axisDiffs[])
 
   for(int i=0; i<3;i++)
   {
-    if (0 > value_threshold-axisDiffs[i])
+    if (value_threshold-axisDiffs[i] < 0)
      {
-       if(DEBUGMODE)
-       {
-         Serial.print("\n\n---------\nmovement detector thinks that this is the threshlod-axisDiffs[i] value:\t---->\t");
-         Serial.print(value_threshold-axisDiffs[i]);
-         Serial.print("\n");
-       }
-        return 1;
+       Serial.print("Movement detected on axis nr: ");
+       Serial.print(i);
+       Serial.print("\nvalue: \n");
+       Serial.println(value_threshold-axisDiffs[i]);
+       return 1;
      }
-     Serial.print("\n\n---------\nmovement detector thinks that this is the threshlod-axisDiffs[i] value:\t---->\t");
-     Serial.print(value_threshold-axisDiffs[i]);
-     Serial.print("\nwhere i is:");
-     Serial.print(i);
-     Serial.print("\n");
   }
   return 0;
 }
@@ -232,11 +171,142 @@ void calculateRestValues()
     ypin_rest = ypin_sum/loopCounter;
     zpin_rest = zpin_sum/loopCounter;
 }
+
+
+void httpRequestMovement() {
+  
+  // close any connection before send a new request.
+  // This will free the socket on the WiFi shield
+  client.stop();
+
+  // if there's a successful connection:
+  if (client.connect(server, 8080)) {
+    Serial.println("connecting...");
+    // send the HTTP GET request:
+    client.println("GET /BBS/MovementDetected HTTP/1.1");
+    //change the IP address here
+    client.println("Host: 192.168.43.34:8080");
+    client.println("User-Agent: Energia/1.1");
+    client.println("Connection: close");
+    client.println();
+    Serial.println("done");
+
+  }
+  else{
+    // if you couldn't make a connection:
+    Serial.println("connection failed");
+  }
+}
+
+
+
+void printWifiStatus() {
+  // print the SSID of the network you're attached to:
+  Serial.print("SSID: ");
+  Serial.println(WiFi.SSID());
+
+  // print your WiFi IP address:
+  IPAddress ip = WiFi.localIP();
+  Serial.print("IP Address: ");
+  Serial.println(ip);
+
+  // print the received signal strength:
+  long rssi = WiFi.RSSI();
+  Serial.print("signal strength (RSSI):");
+  Serial.print(rssi);
+  Serial.println(" dBm");
+}
+
+
+void httpRequestPolling() {
+  
+  // close any connection before send a new request.
+  // This will free the socket on the WiFi shield
+  client.stop();
+
+  // if there's a successful connection:
+  if (client.connect(server, 8080)) {
+    Serial.println("connecting...");
+    // send the HTTP GET request:
+    client.println("GET /BBS/State HTTP/1.1");
+    //change the IP address here
+    client.println("Host: 192.168.43.34:8080");
+    client.println("User-Agent: Energia/1.1");  
+    client.println("Connection: close");
+    client.println();
+    
+
+  }
+  else{
+    // if you couldn't make a connection:
+    Serial.println("connection failed");
+  }
+
+
+  
+  // first line of response: HTTP/1.1 200
+  String line = client.readStringUntil('\n');
+
+
+  //find the right line containing status value
+  const char *riga = line.c_str();
+  char *ret_status;
+  char *ret_movement;
+  ret_status = strstr(riga, "status");
+  ret_movement = strstr(riga, "movement");
+  char s = 'k';
+  char m = 'k';
+
+  while(s=='k' | m=='k'){
+    if(ret_status){
+      s = line[8];  
+    }
+    if(ret_movement){
+      m = line[10];
+    }
+    line = client.readStringUntil('\n');
+    riga = line.c_str();
+    ret_status = strstr(riga, "status");
+    ret_movement = strstr(riga, "movement");
+    }
+  Serial.println("--------------");
+  Serial.print("Stato è: ");
+  Serial.println(s);
+  Serial.print("Movimento è: ");
+  Serial.println(m);
+  Serial.println("--------------");
+
+  if(s == 'T'){
+    Serial.println("Activated");
+    if(m == 'T'){
+      alarm();
+    }else{
+      arm();  
+    }
+  }
+  
+  if(s == 'F'){
+    Serial.println("Deactivated");
+    disarm();
+  }
+  
+  if((s!='T') && (s!='F')){
+    Serial.println("error, status not setted");
+  }
+  
+}
+
+
+
 void setup() {
     // By default MSP432 has analogRead() set to 10 bits.
     // to 12 bit resolution for MSP432.
 
-    Serial.begin(115200);      // initialize serial communication
+    myScreen.begin();
+    myScreen.setFontSize(myScreen.fontMax());
+
+    // initialize serial communication
+    Serial.begin(115200);      
 
     // attempt to connect to Wifi network:
     Serial.print("Attempting to connect to Network named: ");
@@ -273,144 +343,31 @@ void setup() {
     digitalWrite(redLED, HIGH);
 
     calculateRestValues();
-
-
-    digitalWrite(redLED, LOW);
-    digitalWrite(greenLED, HIGH);
-    digitalWrite(blueLED, LOW);
-
-    if(DEBUGMODE == true)
-    { //this code only runs if the DEBUGMODE constanst is true
-    printRestValues();
-    }
-
 }
+
 
 void loop() {
-
-    measureAnalogValues();
-    int analogValueX = measureResults[0];
-    int analogValueY = measureResults[1];
-    int analogValueZ = measureResults[2];
-    calculateChange(analogValueX,analogValueY,analogValueZ);
-
-    //for DEBUGMODE
-    int diffX = diffResults[0];
-    int diffY = diffResults[1];
-    int diffZ = diffResults[2];
-
-    int moving = movementDetected(diffResults);
-    if(moving)
-    {
-      warning_movment();
+    Serial.print("isActive: ");
+    Serial.println(isActive);
+    Serial.print("isMoving: ");
+    Serial.println(isMoving);
+    if(isActive && !isMoving){
+      measureAnalogValues();
+    
+      int analogValueX = measureResults[0];
+      int analogValueY = measureResults[1];
+      int analogValueZ = measureResults[2];
+    
+      calculateChange(analogValueX,analogValueY,analogValueZ);
+    
+      int moving = movementDetected(diffResults);
+    
+      if(moving){
+        warningMovement();
+      }
     }
-    if(movmentFlag)
-    {
-      httpRequest();
-      char buffer[200] = {0};
-      int counterBuffer = 0;
-      int counterI = 0;
-      while (!client.available())
-      {
-        if (counterI >= 1000)
-        {
-          Serial.print("Can't reach server\n");
-          alarm();
-        } 
-        delay(100);
-        counterI += 1;
-      }
-      while (client.available())
-      {
-        char c = client.read();
-        while (!c)
-        {
-          char c = client.read();
-        }
-        
-        //Serial.print(c);
-        if (c != '\r')
-        {
-          buffer[counterBuffer++] = c;
-        }
-      }
-      Serial.print("\n");
-      Serial.print(buffer);
-      Serial.print("\n");
-      
-      if (endsWith(buffer, "ALARM"))
-      {
-        alarm();
-      }
-      else if(endsWith(buffer, "DISARM"))
-      {
-        disarmed();
-      }
-        }
-    if (DEBUGMODE == true)
-    //this code only runs if the DEBUGMODE constanst is true
-    {
-      delay(1000);
-      printAccelerometerData(analogValueX, analogValueY, analogValueZ);
-      printDiffData(diffX, diffY, diffZ);
-    }
-}
+    
+    httpRequestPolling();
+    delay(1200);
 
-void printWifiStatus() {
-  // print the SSID of the network you're attached to:
-  Serial.print("SSID: ");
-  Serial.println(WiFi.SSID());
-
-  // print your WiFi IP address:
-  IPAddress ip = WiFi.localIP();
-  Serial.print("IP Address: ");
-  Serial.println(ip);
-
-  // print the received signal strength:
-  long rssi = WiFi.RSSI();
-  Serial.print("signal strength (RSSI):");
-  Serial.print(rssi);
-  Serial.println(" dBm");
-  // print where to go in a browser:
-  Serial.print("To see this page in action, open a browser to http://");
-  Serial.println(ip);
-}
-
-boolean endsWith(char* inString, const char* compString) {
-  int compLength = strlen(compString);
-  int strLength = strlen(inString);
-
-  //compare the last "compLength" values of the inString
-  int i;
-  for (i = 0; i < compLength; i++) {
-    char a = inString[(strLength - 1) - i];
-    char b = compString[(compLength - 1) - i];
-    if (a != b) {
-      return false;
-    }
-  }
-  return true;
-}
-
-void httpRequest() {
-  // close any connection before send a new request.
-  // This will free the socket on the WiFi shield
-  client.stop();
-
-  // if there's a successful connection:
-  if (client.connect(server, 5000)) {
-    Serial.println("connecting...");
-    // send the HTTP PUT request:
-    client.println("GET /warning HTTP/1.1");
-    //change the IP address here
-    client.println("Host: 192.168.43.34:5000");
-    client.println("User-Agent: Energia/1.1");
-    client.println("Connection: close");
-    client.println();
-
-  }
-  else {
-    // if you couldn't make a connection:
-    Serial.println("connection failed");
-  }
 }
