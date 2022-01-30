@@ -10,7 +10,6 @@ static int ypin_rest = 0;
 static int zpin_rest = 0;
 static int measureResults[3];
 static int diffResults[3];
-static int movmentFlag = 0;
 const int pushbuttonBooster1 = 32;
 const int pushbuttonBooster2 = 33;
 
@@ -59,34 +58,43 @@ WiFiClient client;
 // server address:
 IPAddress server(192,168,43,34);
 
-void disarm()
-{
-  movmentFlag = 0;
+void disarm(){
+  if(isActive == true | isMoving == true){
+    myScreen.clear();
+    deactivatedText();
+    digitalWrite(redLED, LOW);
+    digitalWrite(blueLED, HIGH);
+    digitalWrite(greenLED, LOW);
+    Serial.print("DISARMED\n");
+  }
   isActive = false;
   isMoving = false;
-  myScreen.clear();
-  deactivatedText();
-  digitalWrite(redLED, LOW);
-  digitalWrite(blueLED, HIGH);
-  digitalWrite(greenLED, LOW);
-  Serial.print("DISARMED\n");
 }
 
 void arm(){
+  if(isActive==false){
+    myScreen.clear();
+    activatedText();
+    digitalWrite(redLED, LOW);
+    digitalWrite(blueLED, LOW);
+    digitalWrite(greenLED, HIGH);
+  }
+  
   isActive = true;
-  myScreen.clear();
-  activatedText();
-  digitalWrite(redLED, LOW);
-  digitalWrite(blueLED, LOW);
-  digitalWrite(greenLED, HIGH);
 }
 
+
 void alarm(){
+  if(isMoving == false){
+    digitalWrite(redLED, HIGH);
+    digitalWrite(greenLED, LOW);
+    digitalWrite(blueLED, LOW);
+    myScreen.clear();
+    myScreen.gText(35,60,"Movement!");
+    Serial.print("Aaaaaaaaaaaaalarm\n");
+  }
+  
   isMoving = true;
-  digitalWrite(redLED, HIGH);
-  digitalWrite(greenLED, LOW);
-  digitalWrite(blueLED, LOW);
-  Serial.print("Aaaaaaaaaaaaalarm\n");
 }
 
 
@@ -368,6 +376,4 @@ void loop() {
     }
     
     httpRequestPolling();
-    delay(1200);
-
 }
