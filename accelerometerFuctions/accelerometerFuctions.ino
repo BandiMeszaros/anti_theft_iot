@@ -12,7 +12,7 @@ static int measureResults[3];
 static int diffResults[3];
 int buzzerPin = 40;
 
-bool isActive = true;
+bool isActive = false; // we set it true in setup when calling arm()
 bool isMoving = false;
 
 
@@ -354,8 +354,6 @@ void setup() {
     calculateRestValues();
 
     pinMode(buzzerPin,OUTPUT);
-
-    isActive = false;
     arm();
 }
 
