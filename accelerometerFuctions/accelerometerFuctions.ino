@@ -10,8 +10,6 @@ static int ypin_rest = 0;
 static int zpin_rest = 0;
 static int measureResults[3];
 static int diffResults[3];
-const int pushbuttonBooster1 = 32;
-const int pushbuttonBooster2 = 33;
 
 bool isActive = true;
 bool isMoving = false;
@@ -361,7 +359,7 @@ void loop() {
     Serial.println(isMoving);
     if(isActive && !isMoving){
       measureAnalogValues();
-      
+
       int analogValueX = measureResults[0];
       int analogValueY = measureResults[1];
       int analogValueZ = measureResults[2];
