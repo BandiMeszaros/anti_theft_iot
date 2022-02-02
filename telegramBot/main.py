@@ -13,6 +13,8 @@ class bigBrotherbot:
 		self.updater = Updater(keys.API_KEY, use_context=True)
 
 		self.dp = self.updater.dispatcher
+		self.dp.add_handler(CommandHandler("start", self.start_command))
+		self.dp.add_handler(CommandHandler("help", self.help_command))
 		self.dp.add_handler(CommandHandler("enable", self.enable_command))
 		self.dp.add_handler(CommandHandler("disable", self.disable_command))
 		self.dp.add_handler(MessageHandler(Filters.text, self.handle_message))
@@ -49,6 +51,16 @@ class bigBrotherbot:
 		requests.get(url, {})
 
 
+	def help_command(self, update, context):
+		response = "Press /enable to activate\nPress /disable to deactivate"
+		update.message.reply_text(response)
+
+
+	def start_command(self, update, context):
+		response = "Welcome to Big Brother Security\nType /help to see what we can do!"
+		update.message.reply_text(response)
+
+
 	def disable_command(self, update, context):
 		update.message.reply_text('You just pressed disable')
 		url = self.serverURL + "/Deactivate"
@@ -67,10 +79,9 @@ class bigBrotherbot:
 	def main(self):
 
 		self.statusThread.start()
-		print("Thread is running")
+		print('Bot started...')
 		self.updater.start_polling()
 		self.updater.idle()
-		print("Running..")
 
 
 
