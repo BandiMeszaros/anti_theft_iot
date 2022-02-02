@@ -12,6 +12,7 @@ static int measureResults[3];
 static int diffResults[3];
 int buzzerPin = 40;
 
+
 bool isActive = true;
 bool isMoving = false;
 
