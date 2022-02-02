@@ -12,7 +12,6 @@ static int measureResults[3];
 static int diffResults[3];
 int buzzerPin = 40;
 
-
 bool isActive = true;
 bool isMoving = false;
 
@@ -309,8 +308,6 @@ void httpRequestPolling() {
 
 
 void setup() {
-    // By default MSP432 has analogRead() set to 10 bits.
-    // to 12 bit resolution for MSP432.
 
     myScreen.begin();
     myScreen.setFontSize(myScreen.fontMax());
@@ -344,7 +341,11 @@ void setup() {
     // you're connected now, so print out the status
     printWifiStatus();
 
+    // By default MSP432 has analogRead() set to 10 bits.
+    // to 12 bit resolution for MSP432.
     analogReadResolution(12);
+
+    //setting LED's pin
     pinMode(greenLED, OUTPUT);
     pinMode(redLED, OUTPUT);
     pinMode(blueLED, OUTPUT);
@@ -366,7 +367,7 @@ void loop() {
     Serial.println(isMoving);
     if(isActive && !isMoving){
       measureAnalogValues();
-    
+
       int analogValueX = measureResults[0];
       int analogValueY = measureResults[1];
       int analogValueZ = measureResults[2];
