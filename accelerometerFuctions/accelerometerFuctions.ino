@@ -10,6 +10,7 @@ static int ypin_rest = 0;
 static int zpin_rest = 0;
 static int measureResults[3];
 static int diffResults[3];
+int buzzerPin = 40;
 
 bool isActive = true;
 bool isMoving = false;
@@ -64,6 +65,7 @@ void disarm(){
     digitalWrite(blueLED, HIGH);
     digitalWrite(greenLED, LOW);
     Serial.print("DISARMED\n");
+    noTone(buzzerPin);
   }
   isActive = false;
   isMoving = false;
@@ -90,6 +92,7 @@ void alarm(){
     myScreen.clear();
     myScreen.gText(35,60,"Movement!");
     Serial.print("Aaaaaaaaaaaaalarm\n");
+    tone(buzzerPin, 175);
   }
   
   isMoving = true;
@@ -349,6 +352,11 @@ void setup() {
     digitalWrite(redLED, HIGH);
 
     calculateRestValues();
+
+    pinMode(buzzerPin,OUTPUT);
+
+    isActive = false;
+    arm();
 }
 
 
@@ -374,4 +382,5 @@ void loop() {
     }
     
     httpRequestPolling();
+
 }
